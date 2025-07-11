@@ -44,23 +44,22 @@ ChartJS.register(
     Legend,
     ArcElement
 );
-
-/ // --- Firebase Configuration ---
+ // --- Firebase Configuration ---
 // <<! ------------------------------------------------------------------ !>>
 // <<! สำคัญ: เมื่อนำไปใช้งานจริง ให้แทนที่ Block นี้ทั้งหมดด้วย !>>
 // <<! firebaseConfig จากโปรเจกต์ของคุณเองใน Firebase !>>
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-apiKey: "AIzaSyD7lJNxZ1EZCjtWwO6Vu9Owr68rQZStgbc",
-authDomain: "englishtracking-7aa69.firebaseapp.com",
-projectId: "englishtracking-7aa69",
-storageBucket: "englishtracking-7aa69.firebasestorage.app",
-messagingSenderId: "643772647805",
-appId: "1:643772647805:web:a5b57076e20fed5aede414",
-measurementId: "G-JSEHN1DLPP"
-};
-// <<! ------------------------------------------------------------------ !>>
-
+    apiKey: "AIzaSyD7lJNxZ1EZCjtWwO6Vu9Owr68rQZStgbc",
+    authDomain: "englishtracking-7aa69.firebaseapp.com",
+    projectId: "englishtracking-7aa69",
+    storageBucket: "englishtracking-7aa69.firebasestorage.app",
+    messagingSenderId: "643772647805",
+    appId: "1:643772647805:web:a5b57076e20fed5aede414",
+    measurementId: "G-JSEHN1DLPP"
+    };
+    // <<! ------------------------------------------------------------------ !>>
+    
 
 // --- Initialize Firebase ---
 const app = initializeApp(firebaseConfig);
@@ -352,6 +351,34 @@ const AdminTargetSetter = ({ currentTarget }) => {
             <input type="number" value={target} onChange={handleTargetChange} className="mt-1 w-24 text-center border-gray-300 rounded-md shadow-sm"/>
         </div>
     );
+};
+
+const ScoreDistributionChart = ({ records }) => {
+    const data = useMemo(() => {
+        const scoreRanges = { '0-20': 0, '21-40': 0, '41-60': 0, '61-80': 0, '81-100': 0 };
+        const directExamRecords = records.filter(r => (r.examType || 'สอบตรง') === 'สอบตรง');
+        directExamRecords.forEach(record => {
+            const score = record.score;
+            if (score <= 20) scoreRanges['0-20']++;
+            else if (score <= 40) scoreRanges['21-40']++;
+            else if (score <= 60) scoreRanges['41-60']++;
+            else if (score <= 80) scoreRanges['61-80']++;
+            else scoreRanges['81-100']++;
+        });
+        return {
+            labels: Object.keys(scoreRanges),
+            datasets: [{
+                label: 'จำนวนนักศึกษา',
+                data: Object.values(scoreRanges),
+                backgroundColor: 'rgba(99, 102, 241, 0.6)',
+                borderColor: 'rgba(99, 102, 241, 1)',
+                borderWidth: 1,
+                borderRadius: 5
+            }]
+        };
+    }, [records]);
+
+    return <Bar data={data} options={{ responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, plugins: { legend: { display: false } } }} />;
 };
 
 const StudentList = ({ title, students, isAdmin, onEdit, onDelete, listType }) => {
