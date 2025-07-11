@@ -1,565 +1,464 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { initializeApp } from 'firebase/app';
-import { 
-    getAuth, 
-    onAuthStateChanged, 
-    createUserWithEmailAndPassword, 
-    signInWithEmailAndPassword, 
-    signOut 
-} from 'firebase/auth';
-import { 
-    getFirestore, 
-    collection, 
-    addDoc, 
-    onSnapshot, 
-    query, 
-    serverTimestamp, 
-    orderBy, 
-    doc, 
-    //deleteDoc, 
-    setDoc, 
-    getDoc,
-    updateDoc,
-    where,
-    getDocs
-} from 'firebase/firestore';
-//import { Bar, Doughnut } from 'react-chartjs-2';
-import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    BarElement,
-    Title,
-    Tooltip,
-    Legend,
-    ArcElement,
-} from 'chart.js';
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard ติดตามผลการสอบภาษาอังกฤษ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background-color: #f1f5f9; }
+        .card { background-color: white; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); transition: all 0.3s ease; }
+        .btn { padding: 0.6rem 1.5rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s ease-in-out; display: inline-flex; align-items: center; justify-content: center; }
+        .btn-primary { background-color: #4f46e5; color: white; }
+        .btn-primary:hover { background-color: #4338ca; }
+        .btn-primary:disabled { background-color: #a5b4fc; cursor: not-allowed; }
+        .btn-secondary { background-color: #e2e8f0; color: #475569; }
+        .btn-secondary:hover { background-color: #cbd5e1; }
+        .modal-backdrop { position: fixed; inset: 0; background-color: rgba(15, 23, 42, 0.5); display: flex; justify-content: center; align-items: center; z-index: 50; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+        .modal-content { background-color: white; padding: 2rem; border-radius: 0.75rem; width: 90%; max-width: 500px; }
+        .loader { width: 24px; height: 24px; border: 4px solid #f3f3f3; border-top: 4px solid #4f46e5; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="antialiased">
 
-ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    BarElement,
-    Title,
-    Tooltip,
-    Legend,
-    ArcElement
-);
- // --- Firebase Configuration ---
-// <<! ------------------------------------------------------------------ !>>
-// <<! สำคัญ: เมื่อนำไปใช้งานจริง ให้แทนที่ Block นี้ทั้งหมดด้วย !>>
-// <<! firebaseConfig จากโปรเจกต์ของคุณเองใน Firebase !>>
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-    apiKey: "AIzaSyD7lJNxZ1EZCjtWwO6Vu9Owr68rQZStgbc",
-    authDomain: "englishtracking-7aa69.firebaseapp.com",
-    projectId: "englishtracking-7aa69",
-    storageBucket: "englishtracking-7aa69.firebasestorage.app",
-    messagingSenderId: "643772647805",
-    appId: "1:643772647805:web:a5b57076e20fed5aede414",
-    measurementId: "G-JSEHN1DLPP"
-    };
-    // <<! ------------------------------------------------------------------ !>>
-    
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="min-h-screen flex items-center justify-center bg-slate-100">
+        <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+    </div>
 
-// --- Initialize Firebase ---
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-// --- Collections ---
-const dataCollectionName = `exam_results_v4`;
-const configCollectionName = `config_v4`;
-const usersCollectionName = `users_v4`;
-
-// --- Helper Components ---
-const Spinner = ({ size = 'w-6 h-6', color = 'border-white' }) => (
-    <div className={`${size} border-4 ${color} border-t-transparent rounded-full animate-spin`}></div>
-);
-
-const Modal = ({ children, isOpen, onClose }) => {
-    if (!isOpen) return null;
-    return (
-        <div className="fixed inset-0 bg-slate-900/50 z-50 flex justify-center items-center backdrop-blur-sm p-4" onClick={onClose}>
-            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg" onClick={e => e.stopPropagation()}>
-                {children}
-            </div>
+    <!-- Auth Screen -->
+    <div id="auth-screen" class="min-h-screen hidden items-center justify-center bg-slate-100 p-4">
+        <div class="w-full max-w-md bg-white p-8 rounded-xl shadow-lg">
+            <h2 id="auth-title" class="text-3xl font-bold text-center text-gray-800 mb-6">เข้าสู่ระบบ</h2>
+            <form id="auth-form">
+                <div id="student-id-field" class="mb-4 hidden">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="auth-student-id">รหัสนักศึกษา</label>
+                    <input type="text" id="auth-student-id" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required/>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="auth-email">อีเมล</label>
+                    <input type="email" id="auth-email" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required/>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="auth-password">รหัสผ่าน (อย่างน้อย 6 ตัวอักษร)</label>
+                    <input type="password" id="auth-password" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required/>
+                </div>
+                <p id="auth-error" class="text-red-500 text-xs italic mb-4 hidden"></p>
+                <button id="auth-submit-btn" type="submit" class="w-full btn btn-primary h-10">เข้าสู่ระบบ</button>
+            </form>
+            <p class="text-center text-gray-600 text-sm mt-6">
+                <span id="auth-toggle-text">ยังไม่มีบัญชี?</span>
+                <button id="auth-toggle-btn" class="text-indigo-600 hover:underline ml-1 font-semibold">ลงทะเบียนที่นี่</button>
+            </p>
         </div>
-    );
-};
+    </div>
 
-// --- Authentication Components ---
-const AuthPage = () => {
-    const [isLogin, setIsLogin] = useState(true);
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [studentId, setStudentId] = useState('');
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        setError('');
-        try {
-            if (isLogin) {
-                await signInWithEmailAndPassword(auth, email, password);
-            } else {
-                if (!studentId) throw new Error("กรุณากรอกรหัสนักศึกษา");
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                const user = userCredential.user;
-                await setDoc(doc(db, usersCollectionName, user.uid), {
-                    uid: user.uid,
-                    email: user.email,
-                    studentId: studentId,
-                    createdAt: serverTimestamp()
-                });
-            }
-        } catch (err) {
-            setError(err.message.replace('Firebase: Error ', '').replace(/\(auth\/.*\)\.?/, ''));
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const toggleMode = () => {
-        setIsLogin(!isLogin);
-        setError('');
-    };
-
-    return (
-        <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-            <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-lg">
-                <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">{isLogin ? 'เข้าสู่ระบบ' : 'ลงทะเบียน'}</h2>
-                <form onSubmit={handleSubmit}>
-                    {!isLogin && (
-                        <div className="mb-4">
-                            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="auth-student-id">รหัสนักศึกษา</label>
-                            <input type="text" id="auth-student-id" value={studentId} onChange={(e) => setStudentId(e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
-                        </div>
-                    )}
-                    <div className="mb-4">
-                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">อีเมล</label>
-                        <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
+    <!-- Dashboard Screen -->
+    <div id="dashboard-screen" class="hidden">
+        <div class="container mx-auto p-4 md:p-8">
+            <header class="text-center mb-8 relative">
+                <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Dashboard ติดตามผลการสอบภาษาอังกฤษ</h1>
+                <div class="absolute top-0 right-0 flex items-center gap-4">
+                    <div class="text-right">
+                        <p id="user-email" class="text-sm text-gray-700 font-semibold"></p>
+                        <p id="user-role" class="text-xs text-gray-500"></p>
                     </div>
-                    <div className="mb-6">
-                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">รหัสผ่าน (อย่างน้อย 6 ตัวอักษร)</label>
-                        <input type="password" id="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
-                    </div>
-                    {error && <p className="text-red-500 text-xs italic mb-4">{error}</p>}
-                    <button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled:bg-indigo-300 flex justify-center items-center h-10">
-                        {loading ? <Spinner /> : (isLogin ? 'เข้าสู่ระบบ' : 'ลงทะเบียน')}
-                    </button>
-                </form>
-                <p className="text-center text-gray-600 text-sm mt-6">
-                    {isLogin ? 'ยังไม่มีบัญชี?' : 'มีบัญชีอยู่แล้ว?'}
-                    <button onClick={toggleMode} className="text-indigo-600 hover:underline ml-1 font-semibold">
-                        {isLogin ? 'ลงทะเบียนที่นี่' : 'เข้าสู่ระบบที่นี่'}
-                    </button>
-                </p>
-            </div>
-        </div>
-    );
-};
-
-// --- Main App ---
-export default function App() {
-    const [user, setUser] = useState(null);
-    const [isAdmin, setIsAdmin] = useState(false);
-    const [userProfile, setUserProfile] = useState(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-            if (currentUser) {
-                const roleDocRef = doc(db, 'roles', currentUser.email);
-                const userDocRef = doc(db, usersCollectionName, currentUser.uid);
-                const [roleDocSnap, userDocSnap] = await Promise.all([getDoc(roleDocRef), getDoc(userDocRef)]);
-                const isAdminUser = roleDocSnap.exists() && roleDocSnap.data().isAdmin === true;
-                setUser(currentUser);
-                setIsAdmin(isAdminUser);
-                setUserProfile(userDocSnap.exists() ? userDocSnap.data() : null);
-            } else {
-                setUser(null);
-                setIsAdmin(false);
-                setUserProfile(null);
-            }
-            setLoading(false);
-        });
-        return () => unsubscribe();
-    }, []);
-
-    if (loading) {
-        return <div className="min-h-screen bg-slate-100 flex items-center justify-center"><Spinner color="border-indigo-600" size="w-12 h-12" /></div>;
-    }
-
-    return user ? <Dashboard user={user} isAdmin={isAdmin} userProfile={userProfile} /> : <AuthPage />;
-}
-
-// --- Dashboard Component ---
-function Dashboard({ user, isAdmin, userProfile }) {
-    const [allRecords, setAllRecords] = useState([]);
-    const [config, setConfig] = useState({ totalTarget: 150 });
-    const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [recordToEdit, setRecordToEdit] = useState(null);
-    const [recordToDelete, setRecordToDelete] = useState(null);
-
-    useEffect(() => {
-        const q = query(collection(db, dataCollectionName), orderBy("timestamp", "desc"));
-        const unsubscribeRecords = onSnapshot(q, (snapshot) => {
-            setAllRecords(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        });
-
-        const configDocRef = doc(db, configCollectionName, "settings");
-        const unsubscribeConfig = onSnapshot(configDocRef, (docSnap) => {
-            if (docSnap.exists()) {
-                setConfig(docSnap.data());
-            } else {
-                setDoc(configDocRef, { totalTarget: 150 });
-            }
-        });
-
-        return () => {
-            unsubscribeRecords();
-            unsubscribeConfig();
-        };
-    }, []);
-
-    const handleOpenAddModal = () => {
-        const studentRecord = allRecords.find(r => r.studentId === userProfile?.studentId);
-        const initialData = !isAdmin && userProfile ? studentRecord || { studentId: userProfile.studentId } : null;
-        setRecordToEdit(initialData);
-        setIsAddEditModalOpen(true);
-    };
-
-    const handleOpenEditModal = (record) => {
-        setRecordToEdit(record);
-        setIsAddEditModalOpen(true);
-    };
-
-    const handleOpenDeleteModal = (record) => {
-        setRecordToDelete(record);
-        setIsDeleteModalOpen(true);
-    };
-
-    const { passedCount, remainingCount, sortedChallengers, sortedPassedStudents } = useMemo(() => {
-        const passedStudentsSet = new Set();
-        allRecords.forEach(record => {
-            if (record.status === 'ผ่าน') passedStudentsSet.add(record.studentId);
-        });
-        const passedCount = passedStudentsSet.size;
-        const remainingCount = Math.max(0, config.totalTarget - passedCount);
-        const allStudentsMap = new Map();
-        allRecords.forEach(record => {
-            if (!allStudentsMap.has(record.studentId)) allStudentsMap.set(record.studentId, record);
-        });
-        const challengers = Array.from(allStudentsMap.values()).filter(s => !passedStudentsSet.has(s.studentId));
-        const sortedChallengers = challengers.sort((a, b) => a.studentId.localeCompare(b.studentId));
-        const passed = Array.from(allStudentsMap.values()).filter(s => passedStudentsSet.has(s.studentId));
-        const sortedPassedStudents = passed.sort((a, b) => a.studentId.localeCompare(b.studentId));
-        return { passedCount, remainingCount, sortedChallengers, sortedPassedStudents };
-    }, [allRecords, config.totalTarget]);
-
-    return (
-        <div className="container mx-auto p-4 md:p-8">
-            <header className="text-center mb-8 relative">
-                <h1 className="text-3xl md:text-4xl font-bold text-gray-800">Dashboard ติดตามผลการสอบภาษาอังกฤษ</h1>
-                <div className="absolute top-0 right-0 flex items-center gap-4">
-                    <div className="text-right">
-                        <p className="text-sm text-gray-700 font-semibold">{user.email}</p>
-                        <p className="text-xs text-gray-500">{isAdmin ? 'ผู้ดูแลระบบ' : `นักศึกษา: ${userProfile?.studentId || ''}`}</p>
-                    </div>
-                    <button onClick={() => signOut(auth)} className="btn btn-secondary text-sm">ออกจากระบบ</button>
+                    <button id="logout-btn" class="btn btn-secondary text-sm">ออกจากระบบ</button>
                 </div>
             </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <MetricCard title="เป้าหมายทั้งหมด (คน)" value={config.totalTarget} color="text-indigo-600">
-                    {isAdmin && <AdminTargetSetter currentTarget={config.totalTarget} />}
-                </MetricCard>
-                <MetricCard title="สอบผ่านแล้ว (คน)" value={passedCount} color="text-green-600" />
-                <MetricCard title="เหลืออีก (คน)" value={remainingCount} color="text-red-600" />
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
-                <div className="lg:col-span-2 card">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">ภาพรวมความสำเร็จ</h3>
-                    <div className="h-64 md:h-72 flex items-center justify-center">
-                        <Doughnut data={{
-                            labels: ['สอบผ่านแล้ว', 'เหลืออีก'],
-                            datasets: [{
-                                data: [passedCount, remainingCount > 0 ? remainingCount : 0],
-                                backgroundColor: ['#10B981', '#EF4444'],
-                                hoverBackgroundColor: ['#059669', '#DC2626'],
-                                borderColor: '#ffffff',
-                                borderWidth: 4
-                            }]
-                        }} options={{ responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom' } } }} />
-                    </div>
-                </div>
-                <div className="lg:col-span-3 card">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">การกระจายของคะแนน (สอบตรง)</h3>
-                    <div className="h-64 md:h-72 flex items-center justify-center">
-                        <ScoreDistributionChart records={allRecords} />
-                    </div>
-                </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="card text-center"><h2 class="text-lg font-semibold text-gray-500">เป้าหมายทั้งหมด (คน)</h2><p id="total-target" class="text-4xl font-bold text-indigo-600 mt-2">0</p><div id="set-target-container" class="mt-2 hidden"><label for="set-target" class="text-sm text-gray-600">ตั้งค่าเป้าหมาย:</label><input type="number" id="set-target" class="mt-1 w-24 text-center border-gray-300 rounded-md shadow-sm"/></div></div>
+                <div class="card text-center"><h2 class="text-lg font-semibold text-gray-500">สอบผ่านแล้ว (คน)</h2><p id="total-passed" class="text-4xl font-bold text-green-600 mt-2">0</p></div>
+                <div class="card text-center"><h2 class="text-lg font-semibold text-gray-500">เหลืออีก (คน)</h2><p id="total-remaining" class="text-4xl font-bold text-red-600 mt-2">0</p></div>
             </div>
             
-            <div className="flex justify-end items-center mb-6">
-                 <button onClick={handleOpenAddModal} className="btn btn-primary">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>
-                    เพิ่ม/แก้ไข ผลการสอบ
-                </button>
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
+                <div class="lg:col-span-2 card"><h3 class="text-xl font-bold text-gray-800 mb-4 text-center">ภาพรวมความสำเร็จ</h3><div class="h-64 md:h-72 flex items-center justify-center"><canvas id="progress-chart"></canvas></div></div>
+                <div class="lg:col-span-3 card"><h3 class="text-xl font-bold text-gray-800 mb-4 text-center">การกระจายของคะแนน (สอบตรง)</h3><div class="h-64 md:h-72 flex items-center justify-center"><canvas id="score-distribution-chart"></canvas></div></div>
             </div>
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                <StudentList title="รายชื่อผู้ที่ต้องสอบครั้งถัดไป" students={sortedChallengers} isAdmin={isAdmin} onEdit={handleOpenEditModal} onDelete={handleOpenDeleteModal} listType="challenger" />
-                <StudentList title="รายชื่อผู้ที่สอบผ่านแล้ว" students={sortedPassedStudents} isAdmin={isAdmin} onEdit={handleOpenEditModal} onDelete={handleOpenDeleteModal} listType="passed" />
+            <div class="flex justify-end items-center mb-6">
+                 <button id="add-record-btn" class="btn btn-primary"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>เพิ่ม/แก้ไข ผลการสอบ</button>
             </div>
-
-            <AddEditRecordModal isOpen={isAddEditModalOpen} onClose={() => setIsAddEditModalOpen(false)} recordToEdit={recordToEdit} isAdmin={isAdmin} userProfile={userProfile} />
-            <DeleteConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} recordToDelete={recordToDelete} />
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="card border-2 border-red-200 bg-red-50"><h3 class="text-xl font-bold text-red-800 mb-4">รายชื่อผู้ที่ต้องสอบครั้งถัดไป</h3><div id="challenger-list-container" class="overflow-y-auto max-h-96"></div></div>
+                <div class="card border-2 border-green-200 bg-green-50"><h3 class="text-xl font-bold text-green-800 mb-4">รายชื่อผู้ที่สอบผ่านแล้ว</h3><div id="passed-list-container" class="overflow-y-auto max-h-96"></div></div>
+            </div>
         </div>
-    );
-}
-
-// --- Child Components ---
-const MetricCard = ({ title, value, color, children }) => (
-    <div className="card text-center">
-        <h2 className="text-lg font-semibold text-gray-500">{title}</h2>
-        <p className={`text-4xl font-bold ${color} mt-2`}>{value}</p>
-        {children}
     </div>
-);
+    
+    <!-- Modals -->
+    <div id="add-edit-modal" class="modal-backdrop hidden"></div>
 
-const AdminTargetSetter = ({ currentTarget }) => {
-    const [target, setTarget] = useState(currentTarget);
-    useEffect(() => { setTarget(currentTarget); }, [currentTarget]);
+    <script type="module">
+        // --- Firebase Imports ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp, orderBy, doc, deleteDoc, setDoc, getDoc, updateDoc, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    const handleTargetChange = async (e) => {
-        const newTarget = parseInt(e.target.value, 10);
-        setTarget(newTarget);
-        if (!isNaN(newTarget) && newTarget >= 0) {
-            const configDocRef = doc(db, configCollectionName, "settings");
-            await setDoc(configDocRef, { totalTarget: newTarget });
-        }
-    };
-
-    return (
-        <div className="mt-2">
-            <label className="text-sm text-gray-600">ตั้งค่าเป้าหมาย:</label>
-            <input type="number" value={target} onChange={handleTargetChange} className="mt-1 w-24 text-center border-gray-300 rounded-md shadow-sm"/>
-        </div>
-    );
-};
-
-const ScoreDistributionChart = ({ records }) => {
-    const data = useMemo(() => {
-        const scoreRanges = { '0-20': 0, '21-40': 0, '41-60': 0, '61-80': 0, '81-100': 0 };
-        const directExamRecords = records.filter(r => (r.examType || 'สอบตรง') === 'สอบตรง');
-        directExamRecords.forEach(record => {
-            const score = record.score;
-            if (score <= 20) scoreRanges['0-20']++;
-            else if (score <= 40) scoreRanges['21-40']++;
-            else if (score <= 60) scoreRanges['41-60']++;
-            else if (score <= 80) scoreRanges['61-80']++;
-            else scoreRanges['81-100']++;
-        });
-        return {
-            labels: Object.keys(scoreRanges),
-            datasets: [{
-                label: 'จำนวนนักศึกษา',
-                data: Object.values(scoreRanges),
-                backgroundColor: 'rgba(99, 102, 241, 0.6)',
-                borderColor: 'rgba(99, 102, 241, 1)',
-                borderWidth: 1,
-                borderRadius: 5
-            }]
+        // --- Firebase Configuration ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyD7lJNxZ1EZCjtWwO6Vu9Owr68rQZStgbc",
+            authDomain: "englishtracking-7aa69.firebaseapp.com",
+            projectId: "englishtracking-7aa69",
+            storageBucket: "englishtracking-7aa69.firebasestorage.app",
+            messagingSenderId: "643772647805",
+            appId: "1:643772647805:web:a5b57076e20fed5aede414",
+            
         };
-    }, [records]);
-
-    return <Bar data={data} options={{ responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, plugins: { legend: { display: false } } }} />;
-};
-
-const StudentList = ({ title, students, isAdmin, onEdit, onDelete, listType }) => {
-    const cardClass = listType === 'challenger' ? "border-2 border-red-200 bg-red-50" : "border-2 border-green-200 bg-green-50";
-    const titleClass = listType === 'challenger' ? "text-red-800" : "text-green-800";
-
-    return (
-        <div className={`card ${cardClass}`}>
-            <h3 className={`text-xl font-bold ${titleClass} mb-4`}>{title}</h3>
-            <div className="overflow-y-auto max-h-96">
-                {students.length === 0 ? (
-                    <p className="text-gray-500 text-center p-4">ไม่มีข้อมูล</p>
-                ) : (
-                    <ul className="divide-y divide-gray-200">
-                        {students.map(student => (
-                            <li key={student.id} className="p-3 flex justify-between items-center">
-                                <div>
-                                    <p className="font-medium text-gray-900">{student.firstName} {student.lastName}</p>
-                                    <p className="text-sm text-gray-500">{student.studentId}</p>
-                                </div>
-                                {isAdmin && (
-                                    <div className="flex gap-2">
-                                        <button onClick={() => onEdit(student)} className="p-1 text-blue-500 hover:text-blue-700" title="แก้ไข">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" /></svg>
-                                        </button>
-                                         <button onClick={() => onDelete(student)} className="p-1 text-red-500 hover:text-red-700" title="ลบ">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" /></svg>
-                                        </button>
-                                    </div>
-                                )}
-                            </li>
-                        ))}
-                    </ul>
-                )}
-            </div>
-        </div>
-    );
-};
-
-const AddEditRecordModal = ({ isOpen, onClose, recordToEdit, isAdmin, userProfile }) => {
-    const [formData, setFormData] = useState({});
-    const [loading, setLoading] = useState(false);
-
-    useEffect(() => {
-        if (isOpen) {
-            if (recordToEdit) {
-                setFormData(recordToEdit);
-            } else {
-                setFormData({
-                    studentId: isAdmin ? '' : userProfile?.studentId || '',
-                    firstName: '',
-                    lastName: '',
-                    examDate: new Date().toISOString().split('T')[0],
-                    examType: 'สอบตรง',
-                    status: 'ไม่ผ่าน',
-                    score: ''
-                });
-            }
-        }
-    }, [recordToEdit, isOpen, isAdmin, userProfile]);
-
-    const handleChange = (e) => {
-        const { id, value } = e.target;
-        setFormData(prev => ({ ...prev, [id]: value }));
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        const dataToSave = { ...formData, score: Number(formData.score), timestamp: serverTimestamp() };
         
-        try {
-            if (recordToEdit?.id) {
-                const docRef = doc(db, dataCollectionName, recordToEdit.id);
-                await updateDoc(docRef, dataToSave);
+        // --- Initialize Firebase ---
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // --- Collections ---
+        const dataCollectionName = `exam_results_v4`;
+        const configCollectionName = `config_v4`;
+        const usersCollectionName = `users_v4`;
+
+        // --- Global State ---
+        let allRecords = [];
+        let config = { totalTarget: 150 };
+        let currentUser = null;
+        let isAdmin = false;
+        let userProfile = null;
+        let progressChart = null;
+        let scoreDistributionChart = null;
+
+        // --- DOM Elements ---
+        const loadingScreen = document.getElementById('loading-screen');
+        const authScreen = document.getElementById('auth-screen');
+        const dashboardScreen = document.getElementById('dashboard-screen');
+        
+        // --- Main App Logic ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                const roleDocRef = doc(db, 'roles', user.email);
+                const userDocRef = doc(db, usersCollectionName, user.uid);
+                const [roleDocSnap, userDocSnap] = await Promise.all([getDoc(roleDocRef), getDoc(userDocRef)]);
+                
+                isAdmin = roleDocSnap.exists() && roleDocSnap.data().isAdmin === true;
+                userProfile = userDocSnap.exists() ? userDocSnap.data() : null;
+
+                document.getElementById('user-email').textContent = user.email;
+                document.getElementById('user-role').textContent = isAdmin ? 'ผู้ดูแลระบบ' : `นักศึกษา: ${userProfile?.studentId || ''}`;
+                
+                authScreen.classList.add('hidden');
+                dashboardScreen.classList.remove('hidden');
+                loadingScreen.classList.add('hidden');
+                
+                initializeDashboard();
             } else {
-                const q = query(collection(db, dataCollectionName), where("studentId", "==", dataToSave.studentId));
-                const existingDocs = await getDocs(q);
-                if (!existingDocs.empty) {
-                    const docToUpdate = existingDocs.docs[0];
-                    await updateDoc(docToUpdate.ref, dataToSave);
-                } else {
-                    await addDoc(collection(db, dataCollectionName), dataToSave);
-                }
+                currentUser = null;
+                isAdmin = false;
+                userProfile = null;
+                authScreen.classList.remove('hidden');
+                dashboardScreen.classList.add('hidden');
+                loadingScreen.classList.add('hidden');
+                setupAuthEventListeners();
             }
-            onClose();
-        } catch (err) {
-            console.error("Error saving record:", err);
-        } finally {
-            setLoading(false);
+        });
+
+        function initializeDashboard() {
+            listenForExamResults();
+            listenForConfig();
+            setupDashboardEventListeners();
         }
-    };
 
-    return (
-        <Modal isOpen={isOpen} onClose={onClose}>
-            <h2 className="text-2xl font-bold mb-6">{recordToEdit ? 'แก้ไขผลการสอบ' : 'เพิ่ม/แก้ไข ผลการสอบ'}</h2>
-            <form onSubmit={handleSubmit}>
-                <div className="mb-4">
-                    <label htmlFor="studentId" className="block text-sm font-medium text-gray-700">รหัสนักศึกษา</label>
-                    <input type="text" id="studentId" value={formData.studentId || ''} onChange={handleChange} required disabled={!isAdmin} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm disabled:bg-gray-100"/>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                        <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">ชื่อ</label>
-                        <input type="text" id="firstName" value={formData.firstName || ''} onChange={handleChange} required disabled={!isAdmin} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm disabled:bg-gray-100"/>
-                    </div>
-                    <div>
-                        <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">นามสกุล</label>
-                        <input type="text" id="lastName" value={formData.lastName || ''} onChange={handleChange} required disabled={!isAdmin} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm disabled:bg-gray-100"/>
-                    </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div>
-                        <label htmlFor="examDate" className="block text-sm font-medium text-gray-700">วันที่สอบ</label>
-                        <input type="date" id="examDate" value={formData.examDate || ''} onChange={handleChange} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"/>
-                    </div>
-                     <div>
-                        <label htmlFor="score" className="block text-sm font-medium text-gray-700">คะแนนที่ได้</label>
-                        <input type="number" id="score" value={formData.score || ''} onChange={handleChange} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"/>
-                    </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div>
-                        <label htmlFor="examType" className="block text-sm font-medium text-gray-700">ประเภทการสอบ</label>
-                        <select id="examType" value={formData.examType || 'สอบตรง'} onChange={handleChange} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                            <option>สอบตรง</option>
-                            <option>TOEIC</option>
-                            <option>TOEFL</option>
-                            <option>CU-TEP</option>
-                            <option>TU-GET</option>
-                            <option>TOEFL ITP</option>
-                            <option>อื่นๆ</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label htmlFor="status" className="block text-sm font-medium text-gray-700">สถานะการสอบ</label>
-                        <select id="status" value={formData.status || 'ไม่ผ่าน'} onChange={handleChange} required className="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                            <option>ผ่าน</option>
-                            <option>ไม่ผ่าน</option>
-                        </select>
-                    </div>
-                </div>
-                <div className="flex justify-end gap-4">
-                    <button type="button" onClick={onClose} className="btn btn-secondary">ยกเลิก</button>
-                    <button type="submit" disabled={loading} className="btn btn-primary">
-                        {loading ? <Spinner /> : 'บันทึกข้อมูล'}
-                    </button>
-                </div>
-            </form>
-        </Modal>
-    );
-};
-
-const DeleteConfirmationModal = ({ isOpen, onClose, recordToDelete }) => {
-    const [loading, setLoading] = useState(false);
-
-    const handleDelete = async () => {
-        if (!recordToDelete) return;
-        setLoading(true);
-        try {
-            await deleteDoc(doc(db, dataCollectionName, recordToDelete.id));
-            onClose();
-        } catch (err) {
-            console.error("Error deleting record:", err);
-        } finally {
-            setLoading(false);
+        // --- Data Listeners ---
+        function listenForExamResults() {
+            const q = query(collection(db, dataCollectionName), orderBy("timestamp", "desc"));
+            onSnapshot(q, (snapshot) => {
+                allRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderDashboard();
+            });
         }
-    };
 
-    return (
-        <Modal isOpen={isOpen} onClose={onClose}>
-            <div className="text-center">
-                <h2 className="text-2xl font-bold mt-4 mb-2">ยืนยันการลบข้อมูล</h2>
-                <p className="text-gray-600 mb-6">คุณแน่ใจหรือไม่ว่าต้องการลบผลการสอบนี้? การกระทำนี้ไม่สามารถย้อนกลับได้</p>
-                <div className="flex justify-center gap-4">
-                    <button onClick={onClose} disabled={loading} className="py-2 px-6 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">ยกเลิก</button>
-                    <button onClick={handleDelete} disabled={loading} className="py-2 px-6 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400">
-                        {loading ? 'กำลังลบ...' : 'ยืนยันการลบ'}
-                    </button>
+        function listenForConfig() {
+            const configDocRef = doc(db, configCollectionName, "settings");
+            onSnapshot(configDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    config = docSnap.data();
+                } else {
+                    setDoc(configDocRef, { totalTarget: 150 });
+                }
+                renderDashboard();
+            });
+        }
+
+        // --- Rendering Logic ---
+        function renderDashboard() {
+            const passedStudentsSet = new Set();
+            allRecords.forEach(record => {
+                if (record.status === 'ผ่าน') passedStudentsSet.add(record.studentId);
+            });
+            const passedCount = passedStudentsSet.size;
+            const remainingCount = Math.max(0, config.totalTarget - passedCount);
+
+            document.getElementById('total-target').textContent = config.totalTarget;
+            document.getElementById('set-target').value = config.totalTarget;
+            document.getElementById('total-passed').textContent = passedCount;
+            document.getElementById('total-remaining').textContent = remainingCount;
+
+            const allStudentsMap = new Map();
+            allRecords.forEach(record => {
+                if (!allStudentsMap.has(record.studentId)) allStudentsMap.set(record.studentId, record);
+            });
+            const challengers = Array.from(allStudentsMap.values()).filter(s => !passedStudentsSet.has(s.studentId));
+            const sortedChallengers = challengers.sort((a, b) => a.studentId.localeCompare(b.studentId));
+            const passed = Array.from(allStudentsMap.values()).filter(s => passedStudentsSet.has(s.studentId));
+            const sortedPassedStudents = passed.sort((a, b) => a.studentId.localeCompare(b.studentId));
+            
+            renderStudentList('challenger-list-container', sortedChallengers, 'challenger');
+            renderStudentList('passed-list-container', sortedPassedStudents, 'passed');
+            
+            renderProgressChart(passedCount, remainingCount);
+            renderScoreDistributionChart();
+
+            document.getElementById('set-target-container').classList.toggle('hidden', !isAdmin);
+        }
+
+        function renderProgressChart(passed, remaining) {
+            const ctx = document.getElementById('progress-chart').getContext('2d');
+            const data = {
+                labels: ['สอบผ่านแล้ว', 'เหลืออีก'],
+                datasets: [{
+                    data: [passed, remaining > 0 ? remaining : 0],
+                    backgroundColor: ['#10B981', '#EF4444'],
+                    hoverBackgroundColor: ['#059669', '#DC2626'],
+                    borderColor: '#f1f5f9',
+                    borderWidth: 4
+                }]
+            };
+            if (progressChart) progressChart.destroy();
+            progressChart = new Chart(ctx, { type: 'doughnut', data, options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom' } } } });
+        }
+
+        function renderScoreDistributionChart() {
+            const ctx = document.getElementById('score-distribution-chart').getContext('2d');
+            const scoreRanges = { '0-20': 0, '21-40': 0, '41-60': 0, '61-80': 0, '81-100': 0 };
+            const directExamRecords = allRecords.filter(r => (r.examType || 'สอบตรง') === 'สอบตรง');
+            directExamRecords.forEach(record => {
+                const score = record.score;
+                if (score <= 20) scoreRanges['0-20']++;
+                else if (score <= 40) scoreRanges['21-40']++;
+                else if (score <= 60) scoreRanges['41-60']++;
+                else if (score <= 80) scoreRanges['61-80']++;
+                else scoreRanges['81-100']++;
+            });
+            const data = {
+                labels: Object.keys(scoreRanges),
+                datasets: [{
+                    label: 'จำนวนนักศึกษา',
+                    data: Object.values(scoreRanges),
+                    backgroundColor: 'rgba(99, 102, 241, 0.6)',
+                    borderColor: 'rgba(99, 102, 241, 1)',
+                    borderWidth: 1,
+                    borderRadius: 5
+                }]
+            };
+            if (scoreDistributionChart) scoreDistributionChart.destroy();
+            scoreDistributionChart = new Chart(ctx, { type: 'bar', data, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, plugins: { legend: { display: false } } } });
+        }
+        
+        function renderStudentList(containerId, students, type) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            if (students.length === 0) {
+                const message = type === 'challenger' ? 'ไม่มีนักศึกษาที่ต้องสอบ (ทุกคนผ่านหมดแล้ว!)' : 'ยังไม่มีนักศึกษาที่สอบผ่าน';
+                container.innerHTML = `<p class="text-gray-500 text-center p-4">${message}</p>`;
+                return;
+            }
+            const list = document.createElement('ul');
+            list.className = 'divide-y divide-gray-200';
+            students.forEach(student => {
+                const li = document.createElement('li');
+                li.className = 'p-3 flex justify-between items-center';
+                const examType = student.examType || 'สอบตรง';
+                const badgeColor = examType === 'สอบตรง' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800';
+                li.innerHTML = `
+                    <div>
+                        <p class="font-medium text-gray-900">${student.firstName} ${student.lastName}</p>
+                        <p class="text-sm text-gray-500">${student.studentId}</p>
+                    </div>
+                    ${type === 'passed' ? `<span class="text-xs font-semibold px-2 py-1 rounded-full ${badgeColor}">${examType}</span>` : ''}
+                `;
+                if (isAdmin) {
+                    const editBtn = document.createElement('button');
+                    editBtn.className = 'p-1 text-blue-500 hover:text-blue-700';
+                    editBtn.title = 'แก้ไข';
+                    editBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg>`;
+                    editBtn.onclick = () => openAddEditModal(student);
+                    li.appendChild(editBtn);
+                }
+                list.appendChild(li);
+            });
+            container.appendChild(list);
+        }
+
+        // --- Event Handlers ---
+        function setupAuthEventListeners() {
+            document.getElementById('auth-form').onsubmit = handleAuthSubmit;
+            document.getElementById('auth-toggle-btn').onclick = toggleAuthMode;
+        }
+
+        function setupDashboardEventListeners() {
+            document.getElementById('logout-btn').onclick = () => signOut(auth);
+            document.getElementById('add-record-btn').onclick = openAddEditModal;
+            document.getElementById('set-target').onchange = handleTargetChange;
+        }
+
+        async function handleAuthSubmit(e) {
+            e.preventDefault();
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            const studentIdField = document.getElementById('student-id-field');
+            const studentId = document.getElementById('auth-student-id').value;
+            const errorEl = document.getElementById('auth-error');
+            const submitBtn = document.getElementById('auth-submit-btn');
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<div class="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div>`;
+            errorEl.classList.add('hidden');
+
+            try {
+                if (studentIdField.classList.contains('hidden')) { // Login mode
+                    await signInWithEmailAndPassword(auth, email, password);
+                } else { // Register mode
+                    if (!studentId) throw new Error("กรุณากรอกรหัสนักศึกษา");
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    await setDoc(doc(db, usersCollectionName, userCredential.user.uid), {
+                        uid: userCredential.user.uid,
+                        email: userCredential.user.email,
+                        studentId: studentId,
+                        createdAt: serverTimestamp()
+                    });
+                }
+            } catch (err) {
+                errorEl.textContent = err.message.replace('Firebase: Error ', '').replace(/\(auth\/.*\)\.?/, '');
+                errorEl.classList.remove('hidden');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = studentIdField.classList.contains('hidden') ? 'เข้าสู่ระบบ' : 'ลงทะเบียน';
+            }
+        }
+
+        function toggleAuthMode() {
+            const isLogin = document.getElementById('student-id-field').classList.toggle('hidden');
+            document.getElementById('auth-title').textContent = isLogin ? 'เข้าสู่ระบบ' : 'ลงทะเบียน';
+            document.getElementById('auth-submit-btn').textContent = isLogin ? 'เข้าสู่ระบบ' : 'ลงทะเบียน';
+            document.getElementById('auth-toggle-text').textContent = isLogin ? 'ยังไม่มีบัญชี?' : 'มีบัญชีอยู่แล้ว?';
+            document.getElementById('auth-toggle-btn').textContent = isLogin ? 'ลงทะเบียนที่นี่' : 'เข้าสู่ระบบที่นี่';
+            document.getElementById('auth-error').classList.add('hidden');
+        }
+
+        async function handleTargetChange(e) {
+            const newTarget = parseInt(e.target.value, 10);
+            if (!isNaN(newTarget) && newTarget >= 0) {
+                const configDocRef = doc(db, configCollectionName, "settings");
+                await setDoc(configDocRef, { totalTarget: newTarget });
+            }
+        }
+        
+        function openAddEditModal(record = null) {
+            const modalContainer = document.getElementById('add-edit-modal');
+            const isEdit = !!record;
+            
+            const initialData = isEdit ? record : {
+                studentId: isAdmin ? '' : userProfile?.studentId || '',
+                firstName: '', lastName: '',
+                examDate: new Date().toISOString().split('T')[0],
+                examType: 'สอบตรง', status: 'ไม่ผ่าน', score: ''
+            };
+
+            modalContainer.innerHTML = `
+                <div class="modal-content">
+                    <h2 class="text-2xl font-bold mb-6">${isEdit ? 'แก้ไขผลการสอบ' : (isAdmin ? 'เพิ่มผลการสอบ' : 'เพิ่ม/แก้ไขผลการสอบ')}</h2>
+                    <form id="record-form">
+                        <div class="mb-4">
+                            <label for="form-studentId" class="block text-sm font-medium text-gray-700">รหัสนักศึกษา</label>
+                            <input type="text" id="form-studentId" value="${initialData.studentId || ''}" required ${!isAdmin ? 'disabled' : ''} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm disabled:bg-gray-100"/>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label for="form-firstName" class="block text-sm font-medium text-gray-700">ชื่อ</label>
+                                <input type="text" id="form-firstName" value="${initialData.firstName || ''}" required ${!isAdmin} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm disabled:bg-gray-100"/>
+                            </div>
+                            <div>
+                                <label for="form-lastName" class="block text-sm font-medium text-gray-700">นามสกุล</label>
+                                <input type="text" id="form-lastName" value="${initialData.lastName || ''}" required ${!isAdmin} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm disabled:bg-gray-100"/>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div><label for="form-examDate" class="block text-sm font-medium text-gray-700">วันที่สอบ</label><input type="date" id="form-examDate" value="${initialData.examDate || ''}" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"/></div>
+                            <div><label for="form-score" class="block text-sm font-medium text-gray-700">คะแนนที่ได้</label><input type="number" id="form-score" value="${initialData.score || ''}" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"/></div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div><label for="form-examType" class="block text-sm font-medium text-gray-700">ประเภทการสอบ</label><select id="form-examType" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"><option>สอบตรง</option><option>TOEIC</option><option>TOEFL</option><option>CU-TEP</option><option>TU-GET</option><option>TOEFL ITP</option><option>อื่นๆ</option></select></div>
+                            <div><label for="form-status" class="block text-sm font-medium text-gray-700">สถานะการสอบ</label><select id="form-status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"><option>ผ่าน</option><option>ไม่ผ่าน</option></select></div>
+                        </div>
+                        <div class="flex justify-end gap-4">
+                            <button type="button" id="form-cancel-btn" class="btn btn-secondary">ยกเลิก</button>
+                            <button type="submit" id="form-submit-btn" class="btn btn-primary">บันทึกข้อมูล</button>
+                        </div>
+                    </form>
                 </div>
-            </div>
-        </Modal>
-    );
-};
+            `;
+            
+            document.getElementById('form-examType').value = initialData.examType || 'สอบตรง';
+            document.getElementById('form-status').value = initialData.status || 'ไม่ผ่าน';
+
+            modalContainer.classList.remove('hidden');
+            
+            document.getElementById('form-cancel-btn').onclick = () => modalContainer.classList.add('hidden');
+            document.getElementById('record-form').onsubmit = async (e) => {
+                e.preventDefault();
+                const submitBtn = document.getElementById('form-submit-btn');
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = `<div class="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div>`;
+
+                const formData = {
+                    studentId: document.getElementById('form-studentId').value,
+                    firstName: document.getElementById('form-firstName').value,
+                    lastName: document.getElementById('form-lastName').value,
+                    examDate: document.getElementById('form-examDate').value,
+                    examType: document.getElementById('form-examType').value,
+                    status: document.getElementById('form-status').value,
+                    score: Number(document.getElementById('form-score').value),
+                    timestamp: serverTimestamp()
+                };
+
+                try {
+                    let docToUpdateRef;
+                    if (isEdit) {
+                        docToUpdateRef = doc(db, dataCollectionName, record.id);
+                    } else {
+                        const q = query(collection(db, dataCollectionName), where("studentId", "==", formData.studentId));
+                        const existingDocs = await getDocs(q);
+                        if (!existingDocs.empty) {
+                            docToUpdateRef = existingDocs.docs[0].ref;
+                        }
+                    }
+
+                    if (docToUpdateRef) {
+                        await updateDoc(docToUpdateRef, formData);
+                    } else {
+                        await addDoc(collection(db, dataCollectionName), formData);
+                    }
+                } catch (err) {
+                    console.error("Error saving record:", err);
+                } finally {
+                    modalContainer.classList.add('hidden');
+                }
+            };
+        }
+    </script>
+</body>
+</html>
