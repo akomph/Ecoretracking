@@ -16,14 +16,14 @@ import {
     serverTimestamp, 
     orderBy, 
     doc, 
-    deleteDoc, 
+    //deleteDoc, 
     setDoc, 
     getDoc,
     updateDoc,
     where,
     getDocs
 } from 'firebase/firestore';
-import { Bar, Doughnut } from 'react-chartjs-2';
+//import { Bar, Doughnut } from 'react-chartjs-2';
 import {
     Chart as ChartJS,
     CategoryScale,
