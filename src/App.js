@@ -51,15 +51,16 @@ ChartJS.register(
 // <<! firebaseConfig จากโปรเจกต์ของคุณเองใน Firebase !>>
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-apiKey: "AIzaSyD7lJNxZ1EZCjtWwO6Vu9Owr68rQZStgbc",
-authDomain: "englishtracking-7aa69.firebaseapp.com",
-projectId: "englishtracking-7aa69",
-storageBucket: "englishtracking-7aa69.firebasestorage.app",
-messagingSenderId: "643772647805",
-appId: "1:643772647805:web:a5b57076e20fed5aede414",
-measurementId: "G-JSEHN1DLPP"
-};
-// <<! ------------------------------------------------------------------ !>>
+    apiKey: "AIzaSyD7lJNxZ1EZCjtWwO6Vu9Owr68rQZStgbc",
+    authDomain: "englishtracking-7aa69.firebaseapp.com",
+    projectId: "englishtracking-7aa69",
+    storageBucket: "englishtracking-7aa69.firebasestorage.app",
+    messagingSenderId: "643772647805",
+    appId: "1:643772647805:web:a5b57076e20fed5aede414",
+    measurementId: "G-JSEHN1DLPP"
+    };
+    // <<! ------------------------------------------------------------------ !>>
+    
 
 // --- Initialize Firebase ---
 const app = initializeApp(firebaseConfig);
@@ -72,18 +73,15 @@ const configCollectionName = `config_v3`;
 const usersCollectionName = `users_v3`;
 
 // --- Helper Components ---
-
 const Spinner = () => (
-    <div className="flex justify-center items-center p-4">
-        <div className="w-8 h-8 border-4 border-blue-200 border-t-indigo-600 rounded-full animate-spin"></div>
-    </div>
+    <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
 );
 
 const Modal = ({ children, isOpen, onClose }) => {
     if (!isOpen) return null;
     return (
-        <div className="fixed inset-0 bg-slate-900/50 z-50 flex justify-center items-center backdrop-blur-sm" onClick={onClose}>
-            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg m-4" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-slate-900/50 z-50 flex justify-center items-center backdrop-blur-sm p-4" onClick={onClose}>
+            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg" onClick={e => e.stopPropagation()}>
                 {children}
             </div>
         </div>
@@ -91,7 +89,6 @@ const Modal = ({ children, isOpen, onClose }) => {
 };
 
 // --- Authentication Components ---
-
 const AuthPage = () => {
     const [isLogin, setIsLogin] = useState(true);
     const [email, setEmail] = useState('');
@@ -108,12 +105,9 @@ const AuthPage = () => {
             if (isLogin) {
                 await signInWithEmailAndPassword(auth, email, password);
             } else {
-                if (!studentId) {
-                    throw new Error("กรุณากรอกรหัสนักศึกษา");
-                }
+                if (!studentId) throw new Error("กรุณากรอกรหัสนักศึกษา");
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                 const user = userCredential.user;
-                // Create a user profile document
                 await setDoc(doc(db, usersCollectionName, user.uid), {
                     uid: user.uid,
                     email: user.email,
@@ -131,62 +125,29 @@ const AuthPage = () => {
     const toggleMode = () => {
         setIsLogin(!isLogin);
         setError('');
-    }
+    };
 
     return (
         <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
             <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-lg">
-                <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">
-                    {isLogin ? 'เข้าสู่ระบบ' : 'ลงทะเบียน'}
-                </h2>
+                <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">{isLogin ? 'เข้าสู่ระบบ' : 'ลงทะเบียน'}</h2>
                 <form onSubmit={handleSubmit}>
                     {!isLogin && (
                         <div className="mb-4">
-                            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="auth-student-id">
-                                รหัสนักศึกษา
-                            </label>
-                            <input
-                                type="text"
-                                id="auth-student-id"
-                                value={studentId}
-                                onChange={(e) => setStudentId(e.target.value)}
-                                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                required
-                            />
+                            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="auth-student-id">รหัสนักศึกษา</label>
+                            <input type="text" id="auth-student-id" value={studentId} onChange={(e) => setStudentId(e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
                         </div>
                     )}
                     <div className="mb-4">
-                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
-                            อีเมล
-                        </label>
-                        <input
-                            type="email"
-                            id="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            required
-                        />
+                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">อีเมล</label>
+                        <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
                     </div>
                     <div className="mb-6">
-                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
-                            รหัสผ่าน (อย่างน้อย 6 ตัวอักษร)
-                        </label>
-                        <input
-                            type="password"
-                            id="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            required
-                        />
+                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">รหัสผ่าน (อย่างน้อย 6 ตัวอักษร)</label>
+                        <input type="password" id="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
                     </div>
                     {error && <p className="text-red-500 text-xs italic mb-4">{error}</p>}
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled:bg-indigo-300 flex justify-center items-center"
-                    >
+                    <button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled:bg-indigo-300 flex justify-center items-center h-10">
                         {loading ? <Spinner /> : (isLogin ? 'เข้าสู่ระบบ' : 'ลงทะเบียน')}
                     </button>
                 </form>
@@ -201,7 +162,6 @@ const AuthPage = () => {
     );
 };
 
-
 // --- Main App ---
 export default function App() {
     const [user, setUser] = useState(null);
@@ -212,21 +172,13 @@ export default function App() {
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             if (currentUser) {
-                // Fetch user role (admin status) and profile simultaneously
                 const roleDocRef = doc(db, 'roles', currentUser.email);
                 const userDocRef = doc(db, usersCollectionName, currentUser.uid);
-
-                const [roleDocSnap, userDocSnap] = await Promise.all([
-                    getDoc(roleDocRef),
-                    getDoc(userDocRef)
-                ]);
-
+                const [roleDocSnap, userDocSnap] = await Promise.all([getDoc(roleDocRef), getDoc(userDocRef)]);
                 const isAdminUser = roleDocSnap.exists() && roleDocSnap.data().isAdmin === true;
-                
                 setUser(currentUser);
                 setIsAdmin(isAdminUser);
                 setUserProfile(userDocSnap.exists() ? userDocSnap.data() : null);
-
             } else {
                 setUser(null);
                 setIsAdmin(false);
@@ -241,9 +193,7 @@ export default function App() {
         return <div className="min-h-screen bg-gray-100 flex items-center justify-center"><Spinner /></div>;
     }
 
-    return user 
-        ? <Dashboard user={user} isAdmin={isAdmin} userProfile={userProfile} /> 
-        : <AuthPage />;
+    return user ? <Dashboard user={user} isAdmin={isAdmin} userProfile={userProfile} /> : <AuthPage />;
 }
 
 // --- Dashboard Component ---
@@ -275,10 +225,8 @@ function Dashboard({ user, isAdmin, userProfile }) {
     }, []);
 
     const handleOpenAddModal = () => {
-        // For students, pre-fill their info. For admin, it's a blank form.
-        const initialData = !isAdmin && userProfile 
-            ? { studentId: userProfile.studentId, firstName: '', lastName: '' } // Needs logic to get name
-            : null;
+        const studentRecord = allRecords.find(r => r.studentId === userProfile?.studentId);
+        const initialData = !isAdmin && userProfile ? studentRecord || { studentId: userProfile.studentId } : null;
         setRecordToEdit(initialData);
         setIsAddEditModalOpen(true);
     };
@@ -289,36 +237,26 @@ function Dashboard({ user, isAdmin, userProfile }) {
     };
 
     const { passedCount, remainingCount, sortedChallengers, sortedPassedStudents } = useMemo(() => {
-         const passedStudentsSet = new Set();
+        const passedStudentsSet = new Set();
         allRecords.forEach(record => {
-            if (record.status === 'ผ่าน') {
-                passedStudentsSet.add(record.studentId);
-            }
+            if (record.status === 'ผ่าน') passedStudentsSet.add(record.studentId);
         });
-
         const passedCount = passedStudentsSet.size;
         const remainingCount = Math.max(0, config.totalTarget - passedCount);
-
         const allStudentsMap = new Map();
         allRecords.forEach(record => {
-            if (!allStudentsMap.has(record.studentId)) {
-                allStudentsMap.set(record.studentId, record);
-            }
+            if (!allStudentsMap.has(record.studentId)) allStudentsMap.set(record.studentId, record);
         });
-
         const challengers = Array.from(allStudentsMap.values()).filter(s => !passedStudentsSet.has(s.studentId));
         const sortedChallengers = challengers.sort((a, b) => a.studentId.localeCompare(b.studentId));
-        
         const passed = Array.from(allStudentsMap.values()).filter(s => passedStudentsSet.has(s.studentId));
         const sortedPassedStudents = passed.sort((a, b) => a.studentId.localeCompare(b.studentId));
-
         return { passedCount, remainingCount, sortedChallengers, sortedPassedStudents };
     }, [allRecords, config.totalTarget]);
 
-
     return (
         <div className="container mx-auto p-4 md:p-8">
-             <header className="text-center mb-8 relative">
+            <header className="text-center mb-8 relative">
                 <h1 className="text-3xl md:text-4xl font-bold text-gray-800">Dashboard ติดตามผลการสอบภาษาอังกฤษ</h1>
                 <div className="absolute top-0 right-0 flex items-center gap-4">
                     <div className="text-right">
@@ -329,7 +267,6 @@ function Dashboard({ user, isAdmin, userProfile }) {
                 </div>
             </header>
 
-            {/* The rest of the dashboard UI... */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <MetricCard title="เป้าหมายทั้งหมด (คน)" value={config.totalTarget} color="text-indigo-600">
                     {isAdmin && <AdminTargetSetter currentTarget={config.totalTarget} />}
@@ -346,29 +283,11 @@ function Dashboard({ user, isAdmin, userProfile }) {
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                <StudentList 
-                    title="รายชื่อผู้ที่ต้องสอบครั้งถัดไป" 
-                    students={sortedChallengers} 
-                    isAdmin={isAdmin}
-                    onEdit={handleOpenEditModal}
-                    listType="challenger"
-                />
-                <StudentList 
-                    title="รายชื่อผู้ที่สอบผ่านแล้ว" 
-                    students={sortedPassedStudents} 
-                    isAdmin={isAdmin}
-                    onEdit={handleOpenEditModal}
-                    listType="passed"
-                />
+                <StudentList title="รายชื่อผู้ที่ต้องสอบครั้งถัดไป" students={sortedChallengers} isAdmin={isAdmin} onEdit={handleOpenEditModal} listType="challenger" />
+                <StudentList title="รายชื่อผู้ที่สอบผ่านแล้ว" students={sortedPassedStudents} isAdmin={isAdmin} onEdit={handleOpenEditModal} listType="passed" />
             </div>
 
-            <AddEditRecordModal 
-                isOpen={isAddEditModalOpen}
-                onClose={() => setIsAddEditModalOpen(false)}
-                recordToEdit={recordToEdit}
-                isAdmin={isAdmin}
-                userProfile={userProfile}
-            />
+            <AddEditRecordModal isOpen={isAddEditModalOpen} onClose={() => setIsAddEditModalOpen(false)} recordToEdit={recordToEdit} isAdmin={isAdmin} userProfile={userProfile} />
         </div>
     );
 }
@@ -384,7 +303,6 @@ const MetricCard = ({ title, value, color, children }) => (
 
 const AdminTargetSetter = ({ currentTarget }) => {
     const [target, setTarget] = useState(currentTarget);
-
     useEffect(() => { setTarget(currentTarget); }, [currentTarget]);
 
     const handleTargetChange = async (e) => {
@@ -445,7 +363,6 @@ const AddEditRecordModal = ({ isOpen, onClose, recordToEdit, isAdmin, userProfil
             if (recordToEdit) {
                 setFormData(recordToEdit);
             } else {
-                // New record
                 setFormData({
                     studentId: isAdmin ? '' : userProfile?.studentId || '',
                     firstName: '',
@@ -474,11 +391,9 @@ const AddEditRecordModal = ({ isOpen, onClose, recordToEdit, isAdmin, userProfil
                 const docRef = doc(db, dataCollectionName, recordToEdit.id);
                 await updateDoc(docRef, dataToSave);
             } else {
-                // Check if a record for this student already exists to prevent duplicates
                 const q = query(collection(db, dataCollectionName), where("studentId", "==", dataToSave.studentId));
                 const existingDocs = await getDocs(q);
-                if (!existingDocs.empty && !isAdmin) {
-                    // If exists and user is not admin, update the first one found
+                if (!existingDocs.empty) {
                     const docToUpdate = existingDocs.docs[0];
                     await updateDoc(docToUpdate.ref, dataToSave);
                 } else {
@@ -552,4 +467,3 @@ const AddEditRecordModal = ({ isOpen, onClose, recordToEdit, isAdmin, userProfil
         </Modal>
     );
 };
-
