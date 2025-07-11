@@ -18,6 +18,7 @@ import {
     doc, 
     deleteDoc, 
     setDoc, 
+    getDoc, 
     updateDoc 
 } from 'firebase/firestore';
 import { Bar, Doughnut } from 'react-chartjs-2';
@@ -42,19 +43,17 @@ ChartJS.register(
     ArcElement
 );
 
- // --- Firebase Configuration ---
+// --- Firebase Configuration ---
 // <<! ------------------------------------------------------------------ !>>
-// <<! สำคัญ: เมื่อนำไปใช้งานจริง ให้แทนที่ Block นี้ทั้งหมดด้วย !>>
-// <<! firebaseConfig จากโปรเจกต์ของคุณเองใน Firebase !>>
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// <<! สำคัญ: เมื่อนำไปใช้งานจริง ให้แทนที่ Block นี้ทั้งหมดด้วย          !>>
+// <<! firebaseConfig จากโปรเจกต์ของคุณเองใน Firebase                    !>>
 const firebaseConfig = {
-apiKey: "AIzaSyD7lJNxZ1EZCjtWwO6Vu9Owr68rQZStgbc",
-authDomain: "englishtracking-7aa69.firebaseapp.com",
-projectId: "englishtracking-7aa69",
-storageBucket: "englishtracking-7aa69.firebasestorage.app",
-messagingSenderId: "643772647805",
-appId: "1:643772647805:web:a5b57076e20fed5aede414",
-measurementId: "G-JSEHN1DLPP"
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_STORAGE_BUCKET",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
 };
 // <<! ------------------------------------------------------------------ !>>
 
@@ -200,7 +199,6 @@ export default function App() {
 function Dashboard({ user, isAdmin }) {
     const [allRecords, setAllRecords] = useState([]);
     const [config, setConfig] = useState({ totalTarget: 150 });
-    const [loadingData, setLoadingData] = useState(true);
     
     // States for modals
     const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
@@ -218,7 +216,6 @@ function Dashboard({ user, isAdmin }) {
         const unsubscribeRecords = onSnapshot(q, (snapshot) => {
             const records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setAllRecords(records);
-            setLoadingData(false);
         });
 
         // Listen for config
@@ -237,7 +234,7 @@ function Dashboard({ user, isAdmin }) {
         };
     }, []);
 
-    const { passedStudentsSet, passedCount, remainingCount, sortedChallengers, sortedPassedStudents } = useMemo(() => {
+    const { passedCount, remainingCount, sortedChallengers, sortedPassedStudents } = useMemo(() => {
         const passedStudentsSet = new Set();
         allRecords.forEach(record => {
             if (record.status === 'ผ่าน') {
@@ -261,7 +258,7 @@ function Dashboard({ user, isAdmin }) {
         const passed = Array.from(allStudentsMap.values()).filter(s => passedStudentsSet.has(s.studentId));
         const sortedPassedStudents = passed.sort((a, b) => a.studentId.localeCompare(b.studentId));
 
-        return { passedStudentsSet, passedCount, remainingCount, sortedChallengers, sortedPassedStudents };
+        return { passedCount, remainingCount, sortedChallengers, sortedPassedStudents };
     }, [allRecords, config.totalTarget]);
 
     const handleOpenAddModal = () => {
@@ -670,8 +667,8 @@ const StudentProfileModal = ({ isOpen, onClose, studentId, allRecords, onEdit, o
                         </div>
                         {isAdmin && (
                             <div className="flex gap-2">
-                                <button onClick={() => onEdit(record)} className="p-1 text-blue-500 hover:text-blue-700" title="แก้ไข"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" /></svg></button>
-                                <button onClick={() => onDelete(record)} className="p-1 text-red-500 hover:text-red-700" title="ลบ"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" /></svg></button>
+                                <button onClick={() => {onEdit(record); onClose();}} className="p-1 text-blue-500 hover:text-blue-700" title="แก้ไข"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" /></svg></button>
+                                <button onClick={() => {onDelete(record); onClose();}} className="p-1 text-red-500 hover:text-red-700" title="ลบ"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" /></svg></button>
                             </div>
                         )}
                     </div>
