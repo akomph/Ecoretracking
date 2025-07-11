@@ -42,17 +42,19 @@ ChartJS.register(
     ArcElement
 );
 
-// --- Firebase Configuration ---
+ // --- Firebase Configuration ---
 // <<! ------------------------------------------------------------------ !>>
-// <<! สำคัญ: เมื่อนำไปใช้งานจริง ให้แทนที่ Block นี้ทั้งหมดด้วย          !>>
-// <<! firebaseConfig จากโปรเจกต์ของคุณเองใน Firebase                    !>>
+// <<! สำคัญ: เมื่อนำไปใช้งานจริง ให้แทนที่ Block นี้ทั้งหมดด้วย !>>
+// <<! firebaseConfig จากโปรเจกต์ของคุณเองใน Firebase !>>
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_AUTH_DOMAIN",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+apiKey: "AIzaSyD7lJNxZ1EZCjtWwO6Vu9Owr68rQZStgbc",
+authDomain: "englishtracking-7aa69.firebaseapp.com",
+projectId: "englishtracking-7aa69",
+storageBucket: "englishtracking-7aa69.firebasestorage.app",
+messagingSenderId: "643772647805",
+appId: "1:643772647805:web:a5b57076e20fed5aede414",
+measurementId: "G-JSEHN1DLPP"
 };
 // <<! ------------------------------------------------------------------ !>>
 
