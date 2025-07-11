@@ -18,7 +18,6 @@ import {
     doc, 
     deleteDoc, 
     setDoc, 
-    getDoc, 
     updateDoc 
 } from 'firebase/firestore';
 import { Bar, Doughnut } from 'react-chartjs-2';
