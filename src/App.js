@@ -67,13 +67,13 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 // --- Collections ---
-const dataCollectionName = `exam_results_v3`;
-const configCollectionName = `config_v3`;
-const usersCollectionName = `users_v3`;
+const dataCollectionName = `exam_results_v4`;
+const configCollectionName = `config_v4`;
+const usersCollectionName = `users_v4`;
 
 // --- Helper Components ---
-const Spinner = () => (
-    <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+const Spinner = ({ size = 'w-6 h-6', color = 'border-white' }) => (
+    <div className={`${size} border-4 ${color} border-t-transparent rounded-full animate-spin`}></div>
 );
 
 const Modal = ({ children, isOpen, onClose }) => {
@@ -115,7 +115,7 @@ const AuthPage = () => {
                 });
             }
         } catch (err) {
-            setError(err.message.replace('Firebase: ', ''));
+            setError(err.message.replace('Firebase: Error ', '').replace(/\(auth\/.*\)\.?/, ''));
         } finally {
             setLoading(false);
         }
@@ -127,7 +127,7 @@ const AuthPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
             <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-lg">
                 <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">{isLogin ? 'เข้าสู่ระบบ' : 'ลงทะเบียน'}</h2>
                 <form onSubmit={handleSubmit}>
@@ -189,7 +189,7 @@ export default function App() {
     }, []);
 
     if (loading) {
-        return <div className="min-h-screen bg-gray-100 flex items-center justify-center"><Spinner /></div>;
+        return <div className="min-h-screen bg-slate-100 flex items-center justify-center"><Spinner color="border-indigo-600" size="w-12 h-12" /></div>;
     }
 
     return user ? <Dashboard user={user} isAdmin={isAdmin} userProfile={userProfile} /> : <AuthPage />;
@@ -200,9 +200,7 @@ function Dashboard({ user, isAdmin, userProfile }) {
     const [allRecords, setAllRecords] = useState([]);
     const [config, setConfig] = useState({ totalTarget: 150 });
     const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [recordToEdit, setRecordToEdit] = useState(null);
-    const [recordToDelete, setRecordToDelete] = useState(null);
 
     useEffect(() => {
         const q = query(collection(db, dataCollectionName), orderBy("timestamp", "desc"));
@@ -235,11 +233,6 @@ function Dashboard({ user, isAdmin, userProfile }) {
     const handleOpenEditModal = (record) => {
         setRecordToEdit(record);
         setIsAddEditModalOpen(true);
-    };
-
-    const handleOpenDeleteModal = (record) => {
-        setRecordToDelete(record);
-        setIsDeleteModalOpen(true);
     };
 
     const { passedCount, remainingCount, sortedChallengers, sortedPassedStudents } = useMemo(() => {
@@ -280,30 +273,6 @@ function Dashboard({ user, isAdmin, userProfile }) {
                 <MetricCard title="สอบผ่านแล้ว (คน)" value={passedCount} color="text-green-600" />
                 <MetricCard title="เหลืออีก (คน)" value={remainingCount} color="text-red-600" />
             </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
-                <div className="lg:col-span-2 card">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">ภาพรวมความสำเร็จ</h3>
-                    <div className="h-64 md:h-72 flex items-center justify-center">
-                        <Doughnut data={{
-                            labels: ['สอบผ่านแล้ว', 'เหลืออีก'],
-                            datasets: [{
-                                data: [passedCount, remainingCount > 0 ? remainingCount : 0],
-                                backgroundColor: ['#10B981', '#EF4444'],
-                                hoverBackgroundColor: ['#059669', '#DC2626'],
-                                borderColor: '#ffffff',
-                                borderWidth: 4
-                            }]
-                        }} options={{ responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom' } } }} />
-                    </div>
-                </div>
-                <div className="lg:col-span-3 card">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">การกระจายของคะแนน (สอบตรง)</h3>
-                    <div className="h-64 md:h-72 flex items-center justify-center">
-                        <ScoreDistributionChart records={allRecords} />
-                    </div>
-                </div>
-            </div>
             
             <div className="flex justify-end items-center mb-6">
                  <button onClick={handleOpenAddModal} className="btn btn-primary">
@@ -313,12 +282,11 @@ function Dashboard({ user, isAdmin, userProfile }) {
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                <StudentList title="รายชื่อผู้ที่ต้องสอบครั้งถัดไป" students={sortedChallengers} isAdmin={isAdmin} onEdit={handleOpenEditModal} onDelete={handleOpenDeleteModal} listType="challenger" />
-                <StudentList title="รายชื่อผู้ที่สอบผ่านแล้ว" students={sortedPassedStudents} isAdmin={isAdmin} onEdit={handleOpenEditModal} onDelete={handleOpenDeleteModal} listType="passed" />
+                <StudentList title="รายชื่อผู้ที่ต้องสอบครั้งถัดไป" students={sortedChallengers} isAdmin={isAdmin} onEdit={handleOpenEditModal} listType="challenger" />
+                <StudentList title="รายชื่อผู้ที่สอบผ่านแล้ว" students={sortedPassedStudents} isAdmin={isAdmin} onEdit={handleOpenEditModal} listType="passed" />
             </div>
 
             <AddEditRecordModal isOpen={isAddEditModalOpen} onClose={() => setIsAddEditModalOpen(false)} recordToEdit={recordToEdit} isAdmin={isAdmin} userProfile={userProfile} />
-            <DeleteConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} recordToDelete={recordToDelete} />
         </div>
     );
 }
@@ -353,35 +321,7 @@ const AdminTargetSetter = ({ currentTarget }) => {
     );
 };
 
-const ScoreDistributionChart = ({ records }) => {
-    const data = useMemo(() => {
-        const scoreRanges = { '0-20': 0, '21-40': 0, '41-60': 0, '61-80': 0, '81-100': 0 };
-        const directExamRecords = records.filter(r => (r.examType || 'สอบตรง') === 'สอบตรง');
-        directExamRecords.forEach(record => {
-            const score = record.score;
-            if (score <= 20) scoreRanges['0-20']++;
-            else if (score <= 40) scoreRanges['21-40']++;
-            else if (score <= 60) scoreRanges['41-60']++;
-            else if (score <= 80) scoreRanges['61-80']++;
-            else scoreRanges['81-100']++;
-        });
-        return {
-            labels: Object.keys(scoreRanges),
-            datasets: [{
-                label: 'จำนวนนักศึกษา',
-                data: Object.values(scoreRanges),
-                backgroundColor: 'rgba(99, 102, 241, 0.6)',
-                borderColor: 'rgba(99, 102, 241, 1)',
-                borderWidth: 1,
-                borderRadius: 5
-            }]
-        };
-    }, [records]);
-
-    return <Bar data={data} options={{ responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, plugins: { legend: { display: false } } }} />;
-};
-
-const StudentList = ({ title, students, isAdmin, onEdit, onDelete, listType }) => {
+const StudentList = ({ title, students, isAdmin, onEdit, listType }) => {
     const cardClass = listType === 'challenger' ? "border-2 border-red-200 bg-red-50" : "border-2 border-green-200 bg-green-50";
     const titleClass = listType === 'challenger' ? "text-red-800" : "text-green-800";
 
@@ -400,14 +340,9 @@ const StudentList = ({ title, students, isAdmin, onEdit, onDelete, listType }) =
                                     <p className="text-sm text-gray-500">{student.studentId}</p>
                                 </div>
                                 {isAdmin && (
-                                    <div className="flex gap-2">
-                                        <button onClick={() => onEdit(student)} className="p-1 text-blue-500 hover:text-blue-700" title="แก้ไข">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" /></svg>
-                                        </button>
-                                        <button onClick={() => onDelete(student)} className="p-1 text-red-500 hover:text-red-700" title="ลบ">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" /></svg>
-                                        </button>
-                                    </div>
+                                    <button onClick={() => onEdit(student)} className="p-1 text-blue-500 hover:text-blue-700" title="แก้ไข">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" /></svg>
+                                    </button>
                                 )}
                             </li>
                         ))}
@@ -528,38 +463,6 @@ const AddEditRecordModal = ({ isOpen, onClose, recordToEdit, isAdmin, userProfil
                     </button>
                 </div>
             </form>
-        </Modal>
-    );
-};
-
-const DeleteConfirmationModal = ({ isOpen, onClose, recordToDelete }) => {
-    const [loading, setLoading] = useState(false);
-
-    const handleDelete = async () => {
-        if (!recordToDelete) return;
-        setLoading(true);
-        try {
-            await deleteDoc(doc(db, dataCollectionName, recordToDelete.id));
-            onClose();
-        } catch (err) {
-            console.error("Error deleting record:", err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <Modal isOpen={isOpen} onClose={onClose}>
-            <div className="text-center">
-                <h2 className="text-2xl font-bold mt-4 mb-2">ยืนยันการลบข้อมูล</h2>
-                <p className="text-gray-600 mb-6">คุณแน่ใจหรือไม่ว่าต้องการลบผลการสอบนี้? การกระทำนี้ไม่สามารถย้อนกลับได้</p>
-                <div className="flex justify-center gap-4">
-                    <button onClick={onClose} disabled={loading} className="py-2 px-6 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">ยกเลิก</button>
-                    <button onClick={handleDelete} disabled={loading} className="py-2 px-6 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400">
-                        {loading ? 'กำลังลบ...' : 'ยืนยันการลบ'}
-                    </button>
-                </div>
-            </div>
         </Modal>
     );
 };
